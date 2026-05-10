@@ -1,11 +1,16 @@
-import { auth } from "@/auth";
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 
-export default auth((req) => {
+export async function middleware(req: NextRequest) {
+  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
   const path = req.nextUrl.pathname;
-  const session = req.auth;
-  const isLoggedIn = !!session?.user;
-  const isAdmin = session?.user?.role === "ADMIN";
+
+  const token = secret
+    ? await getToken({ req, secret })
+    : null;
+
+  const isLoggedIn = !!token;
+  const isAdmin = token?.role === "ADMIN";
 
   if (path.startsWith("/admin")) {
     if (!isLoggedIn) {
@@ -28,7 +33,7 @@ export default auth((req) => {
   }
 
   return NextResponse.next();
-});
+}
 
 export const config = {
   matcher: ["/user/:path*", "/admin/:path*", "/plans/:path*", "/plans"],

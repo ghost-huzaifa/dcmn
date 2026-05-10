@@ -34,6 +34,7 @@ export default function LoginPage() {
     if (callback?.startsWith("/")) {
       router.push(callback);
       router.refresh();
+      setPending(false);
       return;
     }
     router.refresh();

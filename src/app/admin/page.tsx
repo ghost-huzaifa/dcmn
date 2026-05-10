@@ -1,11 +1,36 @@
 import { prisma } from "@/lib/prisma";
+import { isPrismaConnectionError } from "@/lib/db-errors";
 
 export default async function AdminHomePage() {
-  const [users, pendingDeposits, pendingWithdrawals] = await Promise.all([
-    prisma.user.count(),
-    prisma.depositRequest.count({ where: { status: "PENDING" } }),
-    prisma.withdrawRequest.count({ where: { status: "PENDING" } }),
-  ]);
+  let users = 0;
+  let pendingDeposits = 0;
+  let pendingWithdrawals = 0;
+  let errorMessage: string | null = null;
+
+  try {
+    [users, pendingDeposits, pendingWithdrawals] = await Promise.all([
+      prisma.user.count(),
+      prisma.depositRequest.count({ where: { status: "PENDING" } }),
+      prisma.withdrawRequest.count({ where: { status: "PENDING" } }),
+    ]);
+  } catch (e) {
+    console.error("[admin] dashboard stats failed", e);
+    errorMessage = isPrismaConnectionError(e)
+      ? "Could not connect to the database. For preview deployments, add DATABASE_URL under Project → Settings → Environment Variables and enable it for Preview (or use the same secret as Production)."
+      : "Something went wrong loading stats. Check the server logs for this deployment.";
+  }
+
+  if (errorMessage) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+        <div className="rounded-2xl border border-amber-800/80 bg-amber-950/40 p-5 text-amber-100">
+          <p className="font-medium">Unable to load dashboard</p>
+          <p className="mt-2 text-sm text-amber-200/90">{errorMessage}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -1,11 +1,11 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { getSession, signIn } from "next-auth/react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
+
 export default function LoginPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -30,21 +30,18 @@ export default function LoginPage() {
       return;
     }
 
+    // Full-page navigation after `getSession()` so the next document request includes
+    // the session cookie. `router.push` RSC fetches can run before the cookie applies → 307 to login.
+    const session = await getSession();
+
     const callback = searchParams.get("callbackUrl");
     if (callback?.startsWith("/")) {
-      router.push(callback);
-      router.refresh();
-      setPending(false);
+      window.location.assign(callback);
       return;
     }
-    router.refresh();
-    const me = await fetch("/api/auth/session").then((r) => r.json());
-    if (me?.user?.role === "ADMIN") {
-      router.push("/admin");
-    } else {
-      router.push("/user/dashboard");
-    }
-    setPending(false);
+
+    const dest = session?.user?.role === "ADMIN" ? "/admin" : "/user/dashboard";
+    window.location.assign(dest);
   }
 
   return (
@@ -53,7 +50,7 @@ export default function LoginPage() {
         <h1 className="text-2xl font-bold text-slate-900">Welcome back</h1>
         <p className="text-sm text-slate-600">Sign in to continue</p>
       </div>
-      <form onSubmit={onSubmit} className="space-y-4 rounded-3xl border border-violet-100 bg-white p-6 shadow-xl shadow-violet-100/50">
+      <form className="space-y-4 rounded-3xl border border-violet-100 bg-white p-6 shadow-xl shadow-violet-100/50" onSubmit={onSubmit}>
         {error && (
           <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
         )}

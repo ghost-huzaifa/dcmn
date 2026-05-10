@@ -1,5 +1,8 @@
 import { SignOutButton } from "@/components/sign-out-button";
+import { auth } from "@/auth";
 import Link from "next/link";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 const links = [
   { href: "/admin", label: "Overview" },
@@ -9,11 +12,21 @@ const links = [
   { href: "/admin/settings", label: "Settings" },
 ];
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth();
+  const pathname = (await headers()).get("x-pathname") ?? "/admin";
+
+  if (!session?.user) {
+    redirect(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
+  }
+  if (session.user.role !== "ADMIN") {
+    redirect("/user/dashboard");
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <div className="border-b border-slate-800 bg-slate-900/80">

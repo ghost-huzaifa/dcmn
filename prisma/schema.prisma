@@ -1,0 +1,172 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum UserPlanStatus {
+  PENDING_DEPOSIT
+  ACTIVE
+  ENDED
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum WalletTxnType {
+  DEPOSIT
+  WITHDRAW
+  TASK_EARN
+  REFERRAL
+  ADJUSTMENT
+}
+
+model User {
+  id             String   @id @default(cuid())
+  username       String   @unique
+  email          String?  @unique
+  phone          String?
+  passwordHash   String
+  role           Role     @default(USER)
+  referenceCode  String   @unique
+  referrerId     String?
+  referrer       User?    @relation("Referrals", fields: [referrerId], references: [id])
+  referrals      User[]   @relation("Referrals")
+  balance        Decimal  @default(0) @db.Decimal(18, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  userPlans             UserPlan[]
+  depositRequests       DepositRequest[]
+  withdrawRequests      WithdrawRequest[]
+  walletTransactions    WalletTransaction[]
+  dailyTaskStates       DailyTaskState[]
+  depositsReviewed      DepositRequest[]  @relation("DepositReviewedBy")
+  withdrawalsReviewed   WithdrawRequest[] @relation("WithdrawReviewedBy")
+}
+
+model Plan {
+  id               String   @id @default(cuid())
+  code             String   @unique
+  securityDeposit  Decimal  @db.Decimal(18, 2)
+  taskCount        Int
+  taskCommission   Decimal  @db.Decimal(18, 2)
+  dailyWage        Decimal  @db.Decimal(18, 2)
+  wage30           Decimal  @db.Decimal(18, 2)
+  wage360          Decimal  @db.Decimal(18, 2)
+  referralLevel1   Decimal  @db.Decimal(18, 2)
+  referralLevel2   Decimal  @db.Decimal(18, 2)
+  referralLevel3   Decimal  @db.Decimal(18, 2)
+  taskGradeA       Decimal  @db.Decimal(18, 4)
+  taskGradeB       Decimal  @db.Decimal(18, 4)
+  taskGradeC       Decimal  @db.Decimal(18, 4)
+
+  userPlans       UserPlan[]
+  depositRequests DepositRequest[]
+}
+
+model UserPlan {
+  id                 String           @id @default(cuid())
+  userId             String
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId             String
+  plan               Plan             @relation(fields: [planId], references: [id])
+  status             UserPlanStatus   @default(PENDING_DEPOSIT)
+  depositRequestId   String?          @unique
+  depositRequest     DepositRequest?  @relation(fields: [depositRequestId], references: [id])
+  startedAt          DateTime?
+  endedAt            DateTime?
+  referralPaidAt     DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  dailyTaskStates DailyTaskState[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model DepositRequest {
+  id           String        @id @default(cuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId       String?
+  plan         Plan?         @relation(fields: [planId], references: [id])
+  amount       Decimal       @db.Decimal(18, 2)
+  note         String?       @db.Text
+  status       RequestStatus @default(PENDING)
+  reviewedById String?
+  reviewedBy   User?         @relation("DepositReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt   DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  userPlan UserPlan?
+
+  @@index([status])
+  @@index([userId])
+}
+
+model WithdrawRequest {
+  id             String        @id @default(cuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount         Decimal       @db.Decimal(18, 2)
+  bankDetails    String        @db.Text
+  status         RequestStatus @default(PENDING)
+  reviewedById   String?
+  reviewedBy     User?         @relation("WithdrawReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt     DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([status])
+  @@index([userId])
+}
+
+model WalletTransaction {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        WalletTxnType
+  amount      Decimal       @db.Decimal(18, 2)
+  balanceAfter Decimal     @db.Decimal(18, 2)
+  memo        String?
+  depositId   String?
+  withdrawId  String?
+  userPlanId  String?
+  createdAt   DateTime      @default(now())
+
+  @@index([userId])
+  @@index([type])
+}
+
+model DailyTaskState {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userPlanId     String
+  userPlan       UserPlan @relation(fields: [userPlanId], references: [id], onDelete: Cascade)
+  dateKey        String
+  completedCount Int      @default(0)
+
+  @@unique([userPlanId, dateKey])
+  @@index([userId])
+}
+
+model SiteSettings {
+  id              String   @id @default("singleton")
+  bankDisplayText String   @default("") @db.Text
+  updatedAt       DateTime @updatedAt
+}

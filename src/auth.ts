@@ -1,12 +1,12 @@
+import { authConfig } from "@/auth.config";
+import { prisma } from "@/lib/prisma";
+import { Role } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
-import { Role } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  trustHost: true,
-  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
+  ...authConfig,
   providers: [
     Credentials({
       name: "credentials",
@@ -36,24 +36,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  callbacks: {
-    jwt({ token, user }) {
-      if (user) {
-        token.role = (user as { role: Role }).role;
-        token.id = user.id;
-        token.sub = user.id;
-      }
-      return token;
-    },
-    session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as Role;
-      }
-      return session;
-    },
-  },
-  pages: {
-    signIn: "/login",
-  },
 });

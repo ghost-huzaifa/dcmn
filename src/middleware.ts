@@ -1,25 +1,30 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { authConfig } from "@/auth.config";
+import NextAuth from "next-auth";
+import Credentials from "next-auth/providers/credentials";
+import { NextResponse } from "next/server";
 
-/** Must match Auth.js `defaultCookies(useSecureCookies)` — on HTTPS the session cookie is `__Secure-authjs.session-token`. */
-function isHttps(req: NextRequest): boolean {
-  const forwarded = req.headers.get("x-forwarded-proto");
-  if (forwarded === "https") return true;
-  if (forwarded === "http") return false;
-  return req.nextUrl.protocol === "https:";
-}
-
-export async function middleware(req: NextRequest) {
-  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+/**
+ * Middleware uses the same JWT/session callbacks as the app but a stub Credentials provider
+ * (no Prisma). Session is resolved via Auth.js internals — same path as `/api/auth/session`,
+ * so cookie names, secrets, and decoding stay in sync with production proxies.
+ */
+export default NextAuth({
+  ...authConfig,
+  providers: [
+    Credentials({
+      name: "credentials",
+      credentials: {
+        username: { label: "Username", type: "text" },
+        password: { label: "Password", type: "password" },
+      },
+      authorize: () => null,
+    }),
+  ],
+}).auth((req) => {
   const path = req.nextUrl.pathname;
-  const secureCookie = isHttps(req);
-
-  const token = secret
-    ? await getToken({ req, secret, secureCookie })
-    : null;
-
-  const isLoggedIn = !!token;
-  const isAdmin = token?.role === "ADMIN";
+  const session = req.auth;
+  const isLoggedIn = !!session?.user;
+  const isAdmin = session?.user?.role === "ADMIN";
 
   if (path.startsWith("/admin")) {
     if (!isLoggedIn) {
@@ -42,7 +47,7 @@ export async function middleware(req: NextRequest) {
   }
 
   return NextResponse.next();
-}
+});
 
 export const config = {
   matcher: ["/user/:path*", "/admin/:path*", "/plans/:path*", "/plans"],

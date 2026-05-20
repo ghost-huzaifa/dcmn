@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
+import { whatsappUrl } from "@/lib/whatsapp";
 import { redirect } from "next/navigation";
 
 export default async function HomePage() {
@@ -10,6 +12,12 @@ export default async function HomePage() {
   if (session?.user) {
     redirect("/user/dashboard");
   }
+
+  const settings = await prisma.siteSettings.findUnique({ where: { id: "singleton" } });
+  const wa = whatsappUrl(
+    settings?.whatsappNumber ?? "+447836532206",
+    "Hello, I would like to know more about DCMN."
+  );
 
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-8 px-6 py-16">
@@ -35,6 +43,15 @@ export default async function HomePage() {
         >
           Create account
         </Link>
+        <a
+          href={wa}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] px-4 py-3 text-center font-semibold text-white shadow-md hover:bg-[#20bd5a]"
+        >
+          <span aria-hidden>💬</span>
+          WhatsApp Support
+        </a>
       </div>
     </main>
   );

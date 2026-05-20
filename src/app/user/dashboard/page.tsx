@@ -5,28 +5,36 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatPkr, formatRs } from "@/lib/money";
 import { getWalletTotals } from "@/lib/stats";
+import { whatsappUrl } from "@/lib/whatsapp";
 import { UserPlanStatus } from "@prisma/client";
 
 export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    include: {
-      userPlans: {
-        where: { status: UserPlanStatus.ACTIVE },
-        include: { plan: true },
-        take: 1,
+  const [user, settings] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      include: {
+        userPlans: {
+          where: { status: UserPlanStatus.ACTIVE },
+          include: { plan: true },
+          take: 1,
+        },
       },
-    },
-  });
+    }),
+    prisma.siteSettings.findUnique({ where: { id: "singleton" } }),
+  ]);
 
   if (!user) redirect("/login");
 
   const totals = await getWalletTotals(user.id);
   const activePlan = user.userPlans[0];
   const needsPlan = !activePlan;
+  const wa = whatsappUrl(
+    settings?.whatsappNumber ?? "+447836532206",
+    "Hello, I need support with my DCMN account."
+  );
 
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-6 px-4 py-8 pb-24">
@@ -54,17 +62,27 @@ export default async function DashboardPage() {
       )}
 
       <nav className="grid grid-cols-4 gap-3 text-center text-xs font-medium">
+        <Tile href="/user/deposit" label="Deposit" className="bg-violet-500" />
+        <Tile href="/user/withdraw" label="Withdraw" className="bg-emerald-500" />
         <Tile href="/plans" label="Buy Hens" className="bg-sky-500" />
         <Tile href="/user/ptc" label="Collect Egg" className="bg-orange-500" />
-        <Tile href="/user/withdraw" label="Sell Eggs" className="bg-emerald-500" />
         <Tile href="/user/referred-users" label="Team" className="bg-pink-500" />
-        <Tile href="/user/deposit" label="Deposit" className="bg-violet-500" />
         <Tile href="/user/deposit/history" label="D-History" className="bg-indigo-600" />
         <Tile href="/user/withdraw/history" label="w-log" className="bg-teal-600" />
         <div className="flex flex-col items-center justify-center rounded-2xl bg-red-500 px-2 py-4 text-white shadow-md">
           <SignOutButton className="text-xs font-medium" label="Logout" />
         </div>
       </nav>
+
+      <a
+        href={wa}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] px-4 py-3 text-center text-sm font-semibold text-white shadow-md hover:bg-[#20bd5a]"
+      >
+        <span aria-hidden>💬</span>
+        Contact us on WhatsApp
+      </a>
 
       <section className="space-y-3">
         <StatCard

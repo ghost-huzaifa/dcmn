@@ -3,7 +3,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { creditUserBalance } from "@/lib/wallet";
-import { payReferralBonuses } from "@/lib/referral";
+import { creditWelcomeBonus, payDepositReferrals } from "@/lib/bonuses";
 import { RequestStatus, UserPlanStatus, WalletTxnType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
@@ -54,8 +54,9 @@ export async function approveDeposit(depositId: string): Promise<{ ok: boolean; 
           },
         });
 
-        if (!userPlan.referralPaidAt) {
-          await payReferralBonuses(tx, dep.userId, dep.planId);
+        if (!userPlan.referralPaidAt && dep.plan) {
+          await creditWelcomeBonus(tx, dep.userId, dep.amount, dep.plan.code);
+          await payDepositReferrals(tx, dep.userId, dep.amount, dep.plan.code);
           await tx.userPlan.update({
             where: { id: userPlan.id },
             data: { referralPaidAt: new Date() },

@@ -2,12 +2,15 @@
 
 import { auth } from "@/auth";
 import { dateKeyKarachi } from "@/lib/date";
+import { payTaskOverrides } from "@/lib/bonuses";
 import { prisma } from "@/lib/prisma";
 import { creditUserBalance } from "@/lib/wallet";
 import { UserPlanStatus, WalletTxnType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
-export async function collectEgg(): Promise<{ ok: boolean; error?: string; earned?: string }> {
+export async function markTaskComplete(
+  taskId: string
+): Promise<{ ok: boolean; error?: string; earned?: string }> {
   const session = await auth();
   if (!session?.user?.id) {
     return { ok: false, error: "Unauthorized." };
@@ -27,38 +30,42 @@ export async function collectEgg(): Promise<{ ok: boolean; error?: string; earne
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      const state = await tx.dailyTaskState.upsert({
-        where: {
-          userPlanId_dateKey: { userPlanId: userPlan.id, dateKey },
-        },
-        create: {
-          userId: session.user!.id,
-          userPlanId: userPlan.id,
-          dateKey,
-          completedCount: 0,
-        },
-        update: {},
+      const task = await tx.adminTask.findUnique({ where: { id: taskId } });
+      if (!task || task.dateKey !== dateKey) {
+        throw new Error("This task is not available today.");
+      }
+
+      const existing = await tx.userTaskCompletion.findUnique({
+        where: { userId_taskId: { userId: session.user!.id, taskId } },
+      });
+      if (existing) {
+        throw new Error("You already completed this task.");
+      }
+
+      const completedToday = await tx.userTaskCompletion.count({
+        where: { userId: session.user!.id, dateKey },
       });
 
-      if (state.completedCount >= userPlan.plan.taskCount) {
+      if (completedToday >= userPlan.plan.taskCount) {
         throw new Error("Daily limit reached. Come back tomorrow.");
       }
 
-      await tx.dailyTaskState.update({
-        where: { id: state.id },
-        data: { completedCount: { increment: 1 } },
+      await tx.userTaskCompletion.create({
+        data: {
+          userId: session.user!.id,
+          userPlanId: userPlan.id,
+          taskId,
+          dateKey,
+          earnedAmount: commission,
+        },
       });
 
-      await creditUserBalance(
-        tx,
-        session.user!.id,
-        commission,
-        WalletTxnType.TASK_EARN,
-        {
-          memo: `Egg collect (${userPlan.plan.code})`,
-          userPlanId: userPlan.id,
-        }
-      );
+      await creditUserBalance(tx, session.user!.id, commission, WalletTxnType.TASK_EARN, {
+        memo: `Task complete (${userPlan.plan.code}) — ${task.title}`,
+        userPlanId: userPlan.id,
+      });
+
+      await payTaskOverrides(tx, session.user!.id, commission, userPlan.plan.code);
 
       return commission.toString();
     });
@@ -68,7 +75,7 @@ export async function collectEgg(): Promise<{ ok: boolean; error?: string; earne
 
     return { ok: true, earned: result };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Could not collect.";
+    const msg = e instanceof Error ? e.message : "Could not complete task.";
     return { ok: false, error: msg };
   }
 }

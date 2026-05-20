@@ -8,7 +8,10 @@ export default async function PlansPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const plans = await prisma.plan.findMany({ orderBy: { securityDeposit: "asc" } });
+  const plans = await prisma.plan.findMany({
+    where: { code: { startsWith: "PLAN" } },
+    orderBy: { securityDeposit: "asc" },
+  });
 
   return (
     <div className="mx-auto min-h-screen max-w-lg bg-gradient-to-b from-emerald-50 to-slate-50 px-4 py-10 pb-24">

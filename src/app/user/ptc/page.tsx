@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { EggGrid } from "@/components/egg-grid";
+import { TaskList } from "@/components/task-list";
 import { dateKeyKarachi } from "@/lib/date";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
@@ -10,35 +10,48 @@ export default async function CollectEggsPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
+  const dateKey = dateKeyKarachi();
+
   const activePlan = await prisma.userPlan.findFirst({
     where: { userId: session.user.id, status: UserPlanStatus.ACTIVE },
     include: { plan: true },
   });
 
-  const dateKey = dateKeyKarachi();
-  let completed = 0;
-  if (activePlan) {
-    const state = await prisma.dailyTaskState.findUnique({
-      where: {
-        userPlanId_dateKey: { userPlanId: activePlan.id, dateKey },
-      },
-    });
-    completed = state?.completedCount ?? 0;
-  }
+  const adminTasks = await prisma.adminTask.findMany({
+    where: { dateKey },
+    orderBy: { position: "asc" },
+  });
 
+  const completions = activePlan
+    ? await prisma.userTaskCompletion.findMany({
+        where: { userId: session.user.id, dateKey },
+        select: { taskId: true, earnedAmount: true },
+      })
+    : [];
+
+  const completionMap = new Map(
+    completions.map((c) => [c.taskId, c.earnedAmount.toString()])
+  );
+
+  const completedToday = completions.length;
   const taskCount = activePlan?.plan.taskCount ?? 0;
-  const remaining = activePlan
-    ? Math.max(0, taskCount - completed)
-    : 0;
   const commission = activePlan?.plan.taskCommission.toString() ?? "0";
+
+  const tasks = adminTasks.map((t) => ({
+    id: t.id,
+    title: t.title,
+    videoUrl: t.videoUrl,
+    completed: completionMap.has(t.id),
+    earnedAmount: completionMap.get(t.id) ?? null,
+  }));
 
   return (
     <div className="mx-auto min-h-screen max-w-3xl bg-gradient-to-b from-sky-500 to-blue-900 px-4 py-10 pb-24 text-white">
       <header className="mb-8 text-center">
-        <p className="text-sm uppercase tracking-wide text-sky-100">Blue Egg Tasks</p>
-        <h1 className="text-2xl font-bold">Collect rewards</h1>
+        <p className="text-sm uppercase tracking-wide text-sky-100">Daily tasks</p>
+        <h1 className="text-2xl font-bold">Complete today&apos;s tasks</h1>
         <p className="mt-2 text-sm text-sky-100">
-          Tap an egg to earn your task commission for today.
+          Watch each video, then mark the task complete to earn your commission.
         </p>
       </header>
 
@@ -55,10 +68,11 @@ export default async function CollectEggsPage() {
       )}
 
       {activePlan && (
-        <EggGrid
+        <TaskList
+          tasks={tasks}
           taskCommission={commission}
-          remaining={remaining}
-          taskCount={taskCount}
+          completedToday={completedToday}
+          dailyCap={taskCount}
         />
       )}
 

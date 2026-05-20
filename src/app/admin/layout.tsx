@@ -4,6 +4,7 @@ import Link from "next/link";
 const links = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/users", label: "Users" },
+  { href: "/admin/tasks", label: "Tasks" },
   { href: "/admin/deposits", label: "Deposits" },
   { href: "/admin/withdrawals", label: "Withdrawals" },
   { href: "/admin/settings", label: "Settings" },

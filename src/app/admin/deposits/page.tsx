@@ -42,6 +42,14 @@ export default async function AdminDepositsPage() {
                   <p className="mt-2 whitespace-pre-wrap text-xs text-slate-500">
                     {d.note || "No note yet."}
                   </p>
+                  {d.screenshotData && d.screenshotMime && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`data:${d.screenshotMime};base64,${d.screenshotData}`}
+                      alt="Payment screenshot"
+                      className="mt-3 max-h-64 rounded-xl border border-slate-700 object-contain"
+                    />
+                  )}
                 </div>
                 <AdminDepositActions depositId={d.id} />
               </div>

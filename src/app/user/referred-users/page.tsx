@@ -18,7 +18,7 @@ export default async function ReferredUsersPage() {
   });
 
   const origin =
-    process.env.NEXTAUTH_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
+    process.env.NEXTAUTH_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
   const referralLink = `${origin}/register?reference=${encodeURIComponent(user.referenceCode)}`;
 
   return (

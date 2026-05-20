@@ -1,7 +1,10 @@
 import { auth } from "@/auth";
 import { DepositNoteForm } from "@/components/deposit-note-form";
+import { DepositScreenshotForm } from "@/components/deposit-screenshot-form";
+import { PlanInfoCard } from "@/components/plan-info-card";
 import { prisma } from "@/lib/prisma";
 import { formatPkr } from "@/lib/money";
+import { getUserPlanContext } from "@/lib/user-plan";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -9,15 +12,15 @@ export default async function DepositPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const settings = await prisma.siteSettings.findUnique({
-    where: { id: "singleton" },
-  });
-
-  const pending = await prisma.depositRequest.findMany({
-    where: { userId: session.user.id, status: "PENDING" },
-    include: { plan: true },
-    orderBy: { createdAt: "desc" },
-  });
+  const [settings, pending, planCtx] = await Promise.all([
+    prisma.siteSettings.findUnique({ where: { id: "singleton" } }),
+    prisma.depositRequest.findMany({
+      where: { userId: session.user.id, status: "PENDING" },
+      include: { plan: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    getUserPlanContext(session.user.id),
+  ]);
 
   return (
     <div className="mx-auto max-w-lg space-y-8 px-4 py-10 pb-24">
@@ -28,6 +31,8 @@ export default async function DepositPage() {
           Transfer funds to the account below. Admin will verify manually.
         </p>
       </header>
+
+      <PlanInfoCard userPlan={planCtx.display} />
 
       <section className="rounded-3xl border border-violet-100 bg-white p-5 shadow-lg">
         <h2 className="font-semibold text-slate-900">Bank details</h2>
@@ -58,10 +63,21 @@ export default async function DepositPage() {
                 </span>
                 <span>{formatPkr(d.amount)}</span>
               </div>
+              {d.plan && (
+                <p className="mt-1 text-xs text-slate-500">
+                  {d.plan.taskCount} daily tasks · {formatPkr(d.plan.taskCommission)} per task ·{" "}
+                  {formatPkr(d.plan.dailyWage)} daily income
+                </p>
+              )}
               <p className="mt-1 text-xs text-slate-500">
                 Submitted {d.createdAt.toLocaleString()}
               </p>
-              <div className="mt-3">
+              <div className="mt-3 space-y-4">
+                <DepositScreenshotForm
+                  depositId={d.id}
+                  screenshotMime={d.screenshotMime}
+                  screenshotData={d.screenshotData}
+                />
                 <DepositNoteForm depositId={d.id} initialNote={d.note} />
               </div>
             </div>

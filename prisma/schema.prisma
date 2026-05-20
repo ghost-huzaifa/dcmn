@@ -52,6 +52,7 @@ model User {
   withdrawRequests      WithdrawRequest[]
   walletTransactions    WalletTransaction[]
   dailyTaskStates       DailyTaskState[]
+  taskCompletions       UserTaskCompletion[]
   depositsReviewed      DepositRequest[]  @relation("DepositReviewedBy")
   withdrawalsReviewed   WithdrawRequest[] @relation("WithdrawReviewedBy")
 }
@@ -63,14 +64,6 @@ model Plan {
   taskCount        Int
   taskCommission   Decimal  @db.Decimal(18, 2)
   dailyWage        Decimal  @db.Decimal(18, 2)
-  wage30           Decimal  @db.Decimal(18, 2)
-  wage360          Decimal  @db.Decimal(18, 2)
-  referralLevel1   Decimal  @db.Decimal(18, 2)
-  referralLevel2   Decimal  @db.Decimal(18, 2)
-  referralLevel3   Decimal  @db.Decimal(18, 2)
-  taskGradeA       Decimal  @db.Decimal(18, 4)
-  taskGradeB       Decimal  @db.Decimal(18, 4)
-  taskGradeC       Decimal  @db.Decimal(18, 4)
 
   userPlans       UserPlan[]
   depositRequests DepositRequest[]
@@ -92,25 +85,28 @@ model UserPlan {
   updatedAt          DateTime         @updatedAt
 
   dailyTaskStates DailyTaskState[]
+  taskCompletions UserTaskCompletion[]
 
   @@index([userId])
   @@index([status])
 }
 
 model DepositRequest {
-  id           String        @id @default(cuid())
-  userId       String
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  planId       String?
-  plan         Plan?         @relation(fields: [planId], references: [id])
-  amount       Decimal       @db.Decimal(18, 2)
-  note         String?       @db.Text
-  status       RequestStatus @default(PENDING)
-  reviewedById String?
-  reviewedBy   User?         @relation("DepositReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
-  reviewedAt   DateTime?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id             String        @id @default(cuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId         String?
+  plan           Plan?         @relation(fields: [planId], references: [id])
+  amount         Decimal       @db.Decimal(18, 2)
+  note           String?       @db.Text
+  screenshotData String?       @db.Text
+  screenshotMime String?
+  status         RequestStatus @default(PENDING)
+  reviewedById   String?
+  reviewedBy     User?         @relation("DepositReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt     DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   userPlan UserPlan?
 
@@ -136,17 +132,17 @@ model WithdrawRequest {
 }
 
 model WalletTransaction {
-  id          String        @id @default(cuid())
-  userId      String
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type        WalletTxnType
-  amount      Decimal       @db.Decimal(18, 2)
-  balanceAfter Decimal     @db.Decimal(18, 2)
-  memo        String?
-  depositId   String?
-  withdrawId  String?
-  userPlanId  String?
-  createdAt   DateTime      @default(now())
+  id           String        @id @default(cuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         WalletTxnType
+  amount       Decimal       @db.Decimal(18, 2)
+  balanceAfter Decimal       @db.Decimal(18, 2)
+  memo         String?
+  depositId    String?
+  withdrawId   String?
+  userPlanId   String?
+  createdAt    DateTime      @default(now())
 
   @@index([userId])
   @@index([type])
@@ -165,8 +161,46 @@ model DailyTaskState {
   @@index([userId])
 }
 
+model AdminTask {
+  id        String   @id @default(cuid())
+  dateKey   String
+  title     String
+  videoUrl  String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  completions UserTaskCompletion[]
+
+  @@index([dateKey, position])
+}
+
+model UserTaskCompletion {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userPlanId   String
+  userPlan     UserPlan @relation(fields: [userPlanId], references: [id], onDelete: Cascade)
+  taskId       String
+  task         AdminTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  dateKey      String
+  earnedAmount Decimal  @db.Decimal(18, 2)
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, taskId])
+  @@index([userId, dateKey])
+  @@index([userPlanId])
+}
+
 model SiteSettings {
-  id              String   @id @default("singleton")
-  bankDisplayText String   @default("") @db.Text
-  updatedAt       DateTime @updatedAt
+  id                    String   @id @default("singleton")
+  bankDisplayText       String   @default("") @db.Text
+  whatsappNumber        String   @default("+447836532206")
+  welcomeBonusPct       Decimal  @default(7) @db.Decimal(5, 2)
+  refLevel1Pct          Decimal  @default(12) @db.Decimal(5, 2)
+  refLevel2Pct          Decimal  @default(4) @db.Decimal(5, 2)
+  refLevel3Pct          Decimal  @default(1) @db.Decimal(5, 2)
+  taskOverrideLevel1Pct Decimal  @default(5) @db.Decimal(5, 2)
+  taskOverrideLevel2Pct Decimal  @default(2) @db.Decimal(5, 2)
+  taskOverrideLevel3Pct Decimal  @default(1) @db.Decimal(5, 2)
+  updatedAt             DateTime @updatedAt
 }

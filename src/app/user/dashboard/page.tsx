@@ -33,26 +33,44 @@ export default async function DashboardPage() {
   const needsPlan = !activePlan;
   const wa = whatsappUrl(
     settings?.whatsappNumber ?? "+447836532206",
-    "Hello, I need support with my DCMN account."
+    "Hello, I need support with my Growvi account."
   );
 
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-6 px-4 py-8 pb-24">
       <header className="rounded-3xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-4 text-white shadow-lg shadow-violet-200">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold tracking-wide">DCMN Secure Growth</span>
+          <span className="text-sm font-semibold tracking-wide">Growvi Secure Growth</span>
           <span className="text-xs opacity-90">Menu</span>
         </div>
       </header>
 
       <section className="rounded-3xl bg-gradient-to-br from-violet-600 to-indigo-700 px-5 py-6 text-white shadow-xl">
-        <p className="text-sm opacity-90">Welcome,</p>
-        <p className="text-xl font-bold">{user.username}</p>
-        <p className="mt-4 flex items-center gap-2 text-lg">
-          <span className="text-yellow-300">●</span>
-          <span>Balance:</span>
-          <span className="font-semibold">{formatRs(user.balance)}</span>
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm opacity-90">Welcome,</p>
+            <p className="text-xl font-bold">{user.username}</p>
+            <p className="mt-4 flex items-center gap-2 text-lg">
+              <span className="text-yellow-300">●</span>
+              <span>Balance:</span>
+              <span className="font-semibold">{formatRs(user.balance)}</span>
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-col gap-2">
+            <Link
+              href="/user/deposit"
+              className="rounded-2xl bg-violet-500 px-4 py-3 text-center text-xs font-semibold text-white shadow-md hover:bg-violet-400"
+            >
+              Deposit
+            </Link>
+            <Link
+              href="/user/withdraw"
+              className="rounded-2xl bg-emerald-500 px-4 py-3 text-center text-xs font-semibold text-white shadow-md hover:bg-emerald-400"
+            >
+              Withdraw
+            </Link>
+          </div>
+        </div>
       </section>
 
       {needsPlan && (
@@ -61,9 +79,7 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      <nav className="grid grid-cols-4 gap-3 text-center text-xs font-medium">
-        <Tile href="/user/deposit" label="Deposit" className="bg-violet-500" />
-        <Tile href="/user/withdraw" label="Withdraw" className="bg-emerald-500" />
+      <nav className="grid grid-cols-3 gap-3 text-center text-xs font-medium">
         <Tile href="/plans" label="Buy Hens" className="bg-sky-500" />
         <Tile href="/user/ptc" label="Collect Egg" className="bg-orange-500" />
         <Tile href="/user/referred-users" label="Team" className="bg-pink-500" />

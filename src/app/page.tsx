@@ -16,14 +16,14 @@ export default async function HomePage() {
   const settings = await prisma.siteSettings.findUnique({ where: { id: "singleton" } });
   const wa = whatsappUrl(
     settings?.whatsappNumber ?? "+447836532206",
-    "Hello, I would like to know more about DCMN."
+    "Hello, I would like to know more about Growvi."
   );
 
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-8 px-6 py-16">
       <div className="space-y-2 text-center">
         <p className="text-sm font-medium uppercase tracking-wide text-violet-600">
-          DCMN
+          Growvi
         </p>
         <h1 className="text-3xl font-bold text-slate-900">Secure Growth</h1>
         <p className="text-slate-600">

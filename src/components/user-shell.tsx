@@ -36,7 +36,7 @@ export function UserShell({ children }: { children: React.ReactNode }) {
       </aside>
       <div className="flex min-h-screen flex-1 flex-col">
         <header className="sticky top-0 z-10 flex items-center justify-between border-b border-violet-100 bg-white/90 px-4 py-3 backdrop-blur md:hidden">
-          <span className="text-sm font-semibold text-violet-900">DCMN</span>
+          <span className="text-sm font-semibold text-violet-900">Growvi</span>
           <SignOutButton className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800" label="Logout" />
         </header>
         {children}

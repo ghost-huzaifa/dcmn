@@ -28,7 +28,8 @@ export default async function DepositPage() {
         <p className="text-2xl">💵</p>
         <h1 className="text-xl font-bold text-slate-900">Deposit</h1>
         <p className="text-sm text-slate-600">
-          Transfer funds to the account below. Admin will verify manually.
+          Transfer funds to the account below, then upload a payment screenshot for each
+          pending deposit. Admin will verify manually.
         </p>
       </header>
 
@@ -72,13 +73,16 @@ export default async function DepositPage() {
               <p className="mt-1 text-xs text-slate-500">
                 Submitted {d.createdAt.toLocaleString()}
               </p>
-              <div className="mt-3 space-y-4">
+              <div className="mt-4 space-y-4">
                 <DepositScreenshotForm
                   depositId={d.id}
                   screenshotMime={d.screenshotMime}
                   screenshotData={d.screenshotData}
                 />
-                <DepositNoteForm depositId={d.id} initialNote={d.note} />
+                <div>
+                  <p className="mb-2 text-xs font-medium text-slate-600">Payment note (optional)</p>
+                  <DepositNoteForm depositId={d.id} initialNote={d.note} />
+                </div>
               </div>
             </div>
           ))

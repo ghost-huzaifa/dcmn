@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DCMN Secure Growth",
+  title: "Growvi Secure Growth",
   description: "Investment plans, daily tasks, and manual settlements.",
 };
 

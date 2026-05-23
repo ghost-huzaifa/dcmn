@@ -1,7 +1,7 @@
 "use client";
 
 import { uploadDepositScreenshot } from "@/actions/deposit";
-import { useRouter } from "next/navigation";
+import { compressImageForUpload } from "@/lib/image-upload";
 import { useRef, useState, useTransition } from "react";
 
 export function DepositScreenshotForm({
@@ -13,34 +13,36 @@ export function DepositScreenshotForm({
   screenshotMime: string | null;
   screenshotData: string | null;
 }) {
-  const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-
-  const preview =
+  const [preview, setPreview] = useState<string | null>(() =>
     screenshotData && screenshotMime
       ? `data:${screenshotMime};base64,${screenshotData}`
-      : null;
+      : null
+  );
+  const [pending, start] = useTransition();
 
   function handleFile(file: File) {
     setError(null);
     setSuccess(null);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      start(async () => {
-        const r = await uploadDepositScreenshot(depositId, dataUrl);
-        if (!r.ok) {
-          setError(r.error ?? "Upload failed.");
-          return;
-        }
-        setSuccess("Screenshot uploaded successfully.");
-        router.refresh();
-      });
-    };
-    reader.readAsDataURL(file);
+    start(async () => {
+      let dataUrl: string;
+      try {
+        dataUrl = await compressImageForUpload(file);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Could not process image.");
+        return;
+      }
+
+      setPreview(dataUrl);
+      const r = await uploadDepositScreenshot(depositId, dataUrl);
+      if (!r.ok) {
+        setError(r.error ?? "Upload failed.");
+        return;
+      }
+      setSuccess("Screenshot uploaded successfully.");
+    });
   }
 
   return (
@@ -73,8 +75,7 @@ export function DepositScreenshotForm({
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif"
-        capture="environment"
+        accept="image/*"
         className="sr-only"
         disabled={pending}
         onChange={(e) => {
@@ -101,7 +102,7 @@ export function DepositScreenshotForm({
               : "Tap to choose payment screenshot"}
         </span>
         <span className="text-xs font-medium text-violet-600">
-          Opens your gallery or camera
+          Opens your photo gallery
         </span>
       </button>
 

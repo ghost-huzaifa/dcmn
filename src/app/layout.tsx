@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Growvi Secure Growth",
-  description: "Investment plans, daily tasks, and manual settlements.",
+  description: "Investment plans and daily tasks.",
 };
 
 export default async function RootLayout({

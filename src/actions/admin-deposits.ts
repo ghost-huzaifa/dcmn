@@ -63,7 +63,7 @@ export async function approveDeposit(depositId: string): Promise<{ ok: boolean; 
           });
         }
       }
-    });
+    }, { timeout: 15000 });
 
     revalidatePath("/admin/deposits");
     revalidatePath("/admin/users");

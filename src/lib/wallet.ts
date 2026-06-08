@@ -1,12 +1,8 @@
 import type { Prisma, WalletTxnType } from "@prisma/client";
-
-type Tx = Omit<
-  Prisma.TransactionClient,
-  "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends"
->;
+import type { DbTx } from "@/lib/db-transaction";
 
 export async function creditUserBalance(
-  tx: Tx,
+  tx: DbTx,
   userId: string,
   amount: Prisma.Decimal,
   type: WalletTxnType,
@@ -17,18 +13,16 @@ export async function creditUserBalance(
     userPlanId?: string;
   }
 ): Promise<void> {
-  const user = await tx.user.findUniqueOrThrow({ where: { id: userId } });
-  const next = user.balance.plus(amount);
-  await tx.user.update({
+  const updated = await tx.user.update({
     where: { id: userId },
-    data: { balance: next },
+    data: { balance: { increment: amount } },
   });
   await tx.walletTransaction.create({
     data: {
       userId,
       type,
       amount,
-      balanceAfter: next,
+      balanceAfter: updated.balance,
       memo: opts?.memo,
       depositId: opts?.depositId ?? undefined,
       withdrawId: opts?.withdrawId ?? undefined,
@@ -38,7 +32,7 @@ export async function creditUserBalance(
 }
 
 export async function debitUserBalance(
-  tx: Tx,
+  tx: DbTx,
   userId: string,
   amount: Prisma.Decimal,
   type: WalletTxnType,
@@ -48,17 +42,16 @@ export async function debitUserBalance(
   if (user.balance.lessThan(amount)) {
     throw new Error("Insufficient balance");
   }
-  const next = user.balance.minus(amount);
-  await tx.user.update({
+  const updated = await tx.user.update({
     where: { id: userId },
-    data: { balance: next },
+    data: { balance: { decrement: amount } },
   });
   await tx.walletTransaction.create({
     data: {
       userId,
       type,
       amount,
-      balanceAfter: next,
+      balanceAfter: updated.balance,
       memo: opts?.memo,
       withdrawId: opts?.withdrawId,
     },

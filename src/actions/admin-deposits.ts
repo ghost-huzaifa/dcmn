@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
+import { runInTransaction } from "@/lib/db-transaction";
 import { prisma } from "@/lib/prisma";
 import { creditUserBalance } from "@/lib/wallet";
 import { creditWelcomeBonus, payDepositReferrals } from "@/lib/bonuses";
@@ -14,7 +15,7 @@ export async function approveDeposit(depositId: string): Promise<{ ok: boolean; 
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await runInTransaction(async (tx) => {
       const dep = await tx.depositRequest.findUnique({
         where: { id: depositId },
         include: { plan: true },
@@ -63,7 +64,7 @@ export async function approveDeposit(depositId: string): Promise<{ ok: boolean; 
           });
         }
       }
-    }, { timeout: 15000 });
+    });
 
     revalidatePath("/admin/deposits");
     revalidatePath("/admin/users");
@@ -84,7 +85,7 @@ export async function rejectDeposit(depositId: string): Promise<{ ok: boolean; e
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await runInTransaction(async (tx) => {
       const dep = await tx.depositRequest.findUnique({ where: { id: depositId } });
       if (!dep || dep.status !== RequestStatus.PENDING) {
         throw new Error("Deposit not pending.");

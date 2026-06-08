@@ -3,6 +3,8 @@
 import { auth } from "@/auth";
 import { dateKeyKarachi } from "@/lib/date";
 import { payTaskOverrides } from "@/lib/bonuses";
+import { runInTransaction } from "@/lib/db-transaction";
+import { formatActionError } from "@/lib/db-errors";
 import { prisma } from "@/lib/prisma";
 import { creditUserBalance } from "@/lib/wallet";
 import { UserPlanStatus, WalletTxnType } from "@prisma/client";
@@ -29,7 +31,7 @@ export async function markTaskComplete(
   const commission = userPlan.plan.taskCommission;
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await runInTransaction(async (tx) => {
       const task = await tx.adminTask.findUnique({ where: { id: taskId } });
       if (!task || task.dateKey !== dateKey) {
         throw new Error("This task is not available today.");
@@ -75,7 +77,7 @@ export async function markTaskComplete(
 
     return { ok: true, earned: result };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Could not complete task.";
+    const msg = formatActionError(e, "Could not complete task.");
     return { ok: false, error: msg };
   }
 }

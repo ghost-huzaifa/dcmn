@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
+import { runInTransaction } from "@/lib/db-transaction";
 import { prisma } from "@/lib/prisma";
 import { debitUserBalance } from "@/lib/wallet";
 import { RequestStatus, WalletTxnType } from "@prisma/client";
@@ -13,7 +14,7 @@ export async function approveWithdraw(withdrawId: string): Promise<{ ok: boolean
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await runInTransaction(async (tx) => {
       const w = await tx.withdrawRequest.findUnique({ where: { id: withdrawId } });
       if (!w || w.status !== RequestStatus.PENDING) {
         throw new Error("Withdrawal not pending.");

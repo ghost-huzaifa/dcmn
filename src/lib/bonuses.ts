@@ -1,11 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { WalletTxnType } from "@prisma/client";
+import type { DbTx } from "@/lib/db-transaction";
 import { creditUserBalance } from "@/lib/wallet";
-
-type Tx = Omit<
-  Prisma.TransactionClient,
-  "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends"
->;
 
 type BonusSettings = {
   welcomeBonusPct: Prisma.Decimal;
@@ -17,7 +13,7 @@ type BonusSettings = {
   taskOverrideLevel3Pct: Prisma.Decimal;
 };
 
-async function getBonusSettings(tx: Tx): Promise<BonusSettings> {
+async function getBonusSettings(tx: DbTx): Promise<BonusSettings> {
   const s = await tx.siteSettings.findUniqueOrThrow({ where: { id: "singleton" } });
   return {
     welcomeBonusPct: s.welcomeBonusPct,
@@ -36,7 +32,7 @@ function pctOf(base: Prisma.Decimal, pct: Prisma.Decimal): Prisma.Decimal {
 
 /** 7% welcome bonus to the buyer on plan activation */
 export async function creditWelcomeBonus(
-  tx: Tx,
+  tx: DbTx,
   userId: string,
   depositAmount: Prisma.Decimal,
   planCode: string
@@ -52,7 +48,7 @@ export async function creditWelcomeBonus(
 
 /** 12% / 4% / 1% of deposit to up-line referrers */
 export async function payDepositReferrals(
-  tx: Tx,
+  tx: DbTx,
   buyerUserId: string,
   depositAmount: Prisma.Decimal,
   planCode: string
@@ -86,7 +82,7 @@ export async function payDepositReferrals(
 
 /** 5% / 2% / 1% of per-task commission to up-line on each task completion */
 export async function payTaskOverrides(
-  tx: Tx,
+  tx: DbTx,
   doerUserId: string,
   taskCommission: Prisma.Decimal,
   planCode: string
